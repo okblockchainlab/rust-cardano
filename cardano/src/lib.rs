@@ -47,6 +47,11 @@ extern crate chain_core;
 #[cfg(test)]
 extern crate base64;
 
+extern crate jni;
+
+extern crate hex;
+extern crate core;
+
 pub mod address;
 pub mod coin;
 pub mod config;
@@ -71,3 +76,4 @@ pub mod wallet;
 pub mod merkle;
 pub mod tags;
 pub mod vss;
+pub mod jnic;

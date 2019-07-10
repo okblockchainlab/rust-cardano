@@ -191,6 +191,11 @@ impl Drop for Seed {
 ///
 /// Effectively this is ed25519 extended secret key (64 bytes) followed by a chain code (32 bytes)
 pub struct XPrv([u8; XPRV_SIZE]);
+impl Hash for XPrv {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
 impl XPrv {
     /// create the Root private key `XPrv` of the HDWallet associated to this `Seed`
     ///
@@ -260,7 +265,7 @@ impl XPrv {
     //
     // This function does not perform any validity check and should not be used outside
     // of this module.
-    fn from_bytes(bytes: [u8; XPRV_SIZE]) -> Self {
+    pub fn from_bytes(bytes: [u8; XPRV_SIZE]) -> Self {
         XPrv(bytes)
     }
 
