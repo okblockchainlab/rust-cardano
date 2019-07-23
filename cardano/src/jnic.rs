@@ -183,14 +183,9 @@ pub extern "system" fn Java_AdaNative_SignRawTx(env: JNIEnv,
     // parse private keys
     let priKeysStr: String = env.get_string(priKeys).expect("Error: Couldn't get java string!").into();
     let mut iterPriKeys = priKeysStr.split_ascii_whitespace();
-    let iterPriCnt = iterPriKeys.clone().count();
-    if iterPriCnt == 0 || (iterPriCnt % 2 != 0) {
-        return env.new_string("Error: priKeys does not match format").unwrap().into_inner();
-    }
-    let mut pri_cnt = iterPriCnt / 2;
-    // the value txPriTxInCnt store the count of txIns needed to be signed using key(Private key)
-    let mut txPriTxInCnt: HashMap<XPrv, usize> = HashMap::new();
-    let mut allTxInCnt: usize = 0;
+    let mut pri_cnt = iterPriKeys.clone().count();
+
+    let mut txWitness = TxWitness::new();
     while pri_cnt > 0 {
         let priStr = iterPriKeys.next().unwrap();
         let priArr = hex::decode(priStr);
@@ -201,35 +196,9 @@ pub extern "system" fn Java_AdaNative_SignRawTx(env: JNIEnv,
             }
         };
         let priKey = XPrv::from_bytes(slice_to_pri(priArr.as_slice()));
-
-        // txInCnt is the count of txins which are composed of private key's utxo.
-        let txInCnt = iterPriKeys.next().unwrap().parse::<usize>();
-        let txInCnt = match txInCnt {
-            Ok(txInCnt) => txInCnt,
-            Err(_error) => {
-                return env.new_string("Error: parse count of txins failed!").unwrap().into_inner();
-            }
-        };
-        txPriTxInCnt.insert(priKey, txInCnt);
+        let txInWit = TxInWitness::new_extended_pk(ProtocolMagic::default(), &priKey, &raw.id());
+        txWitness.push(txInWit);
         pri_cnt -= 1;
-        allTxInCnt += txInCnt;
-    }
-
-    if allTxInCnt != txInsCntFromRwaTx {
-        return env.new_string(format!("Error: private keys do not match the count of txins in raw tx! {}, {}",
-                                      allTxInCnt, txInsCntFromRwaTx)).unwrap().into_inner();
-    }
-
-    let mut txWitness = TxWitness::new();
-    let mut txInsIndex: usize = 0;
-    for (key, value) in txPriTxInCnt {
-        let mut val = value;
-        while val > 0 {
-            let txInWit = TxInWitness::new_extended_pk(ProtocolMagic::default(), &key, &txIns[txInsIndex].id);
-            txWitness.push(txInWit);
-            val -= 1;
-            txInsIndex += 1;
-        }
     }
     let txWithSign = TxAux::new(raw, txWitness);
     let txWithSignArr = txWithSign.serialize_as_vec().unwrap();
