@@ -16,8 +16,8 @@ use jni::sys::{jstring, jbyteArray};
 //use std::time::Duration;
 //use std::sync::mpsc;
 use hdwallet;
-use address::ExtendedAddr;
-use config::ProtocolMagic;
+use address::{ExtendedAddr, AddrType, SpendingData, Attributes};
+use config::{ProtocolMagic};
 use util::{base58, try_from_slice::TryFromSlice};
 use tx::{Tx, TxoPointer, TxId, TxOut, TxAux, TxWitness, TxInWitness};
 use hex;
@@ -26,6 +26,7 @@ use chain_core::property::{Serialize, Deserialize};
 //use core::num::flt2dec::strategy::grisu::max_pow10_no_more_than;
 use hdwallet::XPrv;
 use std::collections::HashMap;
+use hdpayload::HDAddressPayload;
 
 fn slice_to_seed(bytes: &[u8]) -> [u8; hdwallet::SEED_SIZE] {
     let mut array = [0; hdwallet::SEED_SIZE];
@@ -95,14 +96,30 @@ pub extern "system" fn Java_AdaNative_GeneratePubKey(env: JNIEnv,
 #[allow(non_snake_case)]
 pub extern "system" fn Java_AdaNative_GenerateAddr(env: JNIEnv,
                                                    _class: JClass,
-                                                   input: jbyteArray)
+                                                   input: jbyteArray,
+                                                   payload: JString)
                                                    -> jstring {
     let inputBytes = env.convert_byte_array(input).unwrap();
     if inputBytes.len() != hdwallet::XPUB_SIZE {
         env.new_string(format!("Error: length of private key must be {}", hdwallet::XPRV_SIZE)).unwrap().into_inner();
     }
+    let hdapStr: String = env.get_string(payload).expect("Error: Couldn't get payload!").into();
+
     let pk = hdwallet::XPub::from_bytes(slice_to_pub(inputBytes.as_slice()));
-    let ea = ExtendedAddr::new_simple(pk, ProtocolMagic::default().into());
+    let hdapArr = hex::decode(hdapStr);
+    let hdapArr = match hdapArr {
+        Ok(hdapArr) => hdapArr,
+        Err(error) => {
+            return env.new_string(format!("Error: hex decode payload error: {}", error.to_string())).unwrap().into_inner();
+        }
+    };
+    let hdap = HDAddressPayload::from_bytes(hdapArr.as_slice());
+    let addr_type = AddrType::ATPubKey;
+    let sd = SpendingData::PubKeyASD(pk.clone());
+    let attrs = Attributes::new_bootstrap_era( Some(hdap), ProtocolMagic::default().into());
+
+    let ea = ExtendedAddr::new(addr_type, sd, attrs);
+
     let addr = cbor!(ea).unwrap();
     let addrStr = base58::encode(&addr);
     let output = env.new_string(format!("{}", addrStr)).unwrap();
