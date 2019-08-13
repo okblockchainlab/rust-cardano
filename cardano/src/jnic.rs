@@ -225,7 +225,7 @@ pub fn handle_inputs(inputs: String) -> Result<Vec<TxoPointer>, String> {
                 // return env.new_string(format!("Error: TxId decode failed!")).unwrap().into_inner();
             }
         };
-        let txId = TxId::new(&txIdArr);
+        let txId = TxId::try_from_slice(&txIdArr).unwrap();
         let index = iterIn.next().unwrap().parse::<u32>();
         let index = match index {
             Ok(index) => index,
