@@ -96,30 +96,14 @@ pub extern "system" fn Java_AdaNative_GeneratePubKey(env: JNIEnv,
 #[allow(non_snake_case)]
 pub extern "system" fn Java_AdaNative_GenerateAddr(env: JNIEnv,
                                                    _class: JClass,
-                                                   input: jbyteArray,
-                                                   payload: JString)
+                                                   input: jbyteArray)
                                                    -> jstring {
     let inputBytes = env.convert_byte_array(input).unwrap();
     if inputBytes.len() != hdwallet::XPUB_SIZE {
         env.new_string(format!("Error: length of private key must be {}", hdwallet::XPRV_SIZE)).unwrap().into_inner();
     }
-    let hdapStr: String = env.get_string(payload).expect("Error: Couldn't get payload!").into();
-
     let pk = hdwallet::XPub::from_bytes(slice_to_pub(inputBytes.as_slice()));
-    let hdapArr = hex::decode(hdapStr);
-    let hdapArr = match hdapArr {
-        Ok(hdapArr) => hdapArr,
-        Err(error) => {
-            return env.new_string(format!("Error: hex decode payload error: {}", error.to_string())).unwrap().into_inner();
-        }
-    };
-    let hdap = HDAddressPayload::from_bytes(hdapArr.as_slice());
-    let addr_type = AddrType::ATPubKey;
-    let sd = SpendingData::PubKeyASD(pk.clone());
-    let attrs = Attributes::new_bootstrap_era( Some(hdap), ProtocolMagic::default().into());
-
-    let ea = ExtendedAddr::new(addr_type, sd, attrs);
-
+    let ea = ExtendedAddr::new_simple(pk, ProtocolMagic::default().into());
     let addr = cbor!(ea).unwrap();
     let addrStr = base58::encode(&addr);
     let output = env.new_string(format!("{}", addrStr)).unwrap();
