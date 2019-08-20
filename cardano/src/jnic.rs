@@ -54,7 +54,7 @@ fn slice_to_pub(bytes: &[u8]) -> [u8; hdwallet::XPUB_SIZE] {
 // This turns off linter warnings because
 // the name doesn't conform to conventions.
 #[allow(non_snake_case)]
-pub extern "system" fn Java_AdaNative_GeneratePrivKey(env: JNIEnv,
+pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePrivKey(env: JNIEnv,
                                                       // this is the class that owns our
                                                       // static method. Not going to be
                                                       // used, but still needs to have
@@ -78,7 +78,7 @@ pub extern "system" fn Java_AdaNative_GeneratePrivKey(env: JNIEnv,
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_AdaNative_GeneratePubKey(env: JNIEnv,
+pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePubKey(env: JNIEnv,
                                                      _class: JClass,
                                                      input: jbyteArray)
                                                      -> jstring {
@@ -94,7 +94,7 @@ pub extern "system" fn Java_AdaNative_GeneratePubKey(env: JNIEnv,
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_AdaNative_GenerateAddr(env: JNIEnv,
+pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GenerateAddr(env: JNIEnv,
                                                    _class: JClass,
                                                    input: jbyteArray)
                                                    -> jstring {
@@ -112,7 +112,7 @@ pub extern "system" fn Java_AdaNative_GenerateAddr(env: JNIEnv,
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_AdaNative_GenRawTx(env: JNIEnv,
+pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GenRawTx(env: JNIEnv,
                                                _class: JClass,
                                                inputs: JString,
                                                outputs: JString)
@@ -146,7 +146,7 @@ pub extern "system" fn Java_AdaNative_GenRawTx(env: JNIEnv,
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn Java_AdaNative_SignRawTx(env: JNIEnv,
+pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_SignRawTx(env: JNIEnv,
                                                 _class: JClass,
                                                 rawTx: jbyteArray,
                                                 priKeys: JString)

@@ -10,4 +10,5 @@ members = [
     "storage",
     "cardano-c",
     "exe-common",
+    "test",
 ]
