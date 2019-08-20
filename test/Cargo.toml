@@ -1,0 +1,12 @@
+[package]
+name = "test"
+version = "0.1.1"
+
+[build-dependencies]
+
+[dependencies]
+cryptoxide = "0.1"
+cbor_event = "^2.1.1"
+
+cardano = { path = "../cardano" }
+hex = "0.3.2"
