@@ -16,17 +16,21 @@ use jni::sys::{jstring, jbyteArray};
 //use std::time::Duration;
 //use std::sync::mpsc;
 use hdwallet;
+use wallet::keygen;
+use bip::bip39;
 use address::{ExtendedAddr, AddrType, SpendingData, Attributes};
-use config::{ProtocolMagic};
+use config::ProtocolMagic;
 use util::{base58, try_from_slice::TryFromSlice};
 use tx::{Tx, TxoPointer, TxId, TxOut, TxAux, TxWitness, TxInWitness};
 use hex;
 use coin::Coin;
 use chain_core::property::{Serialize, Deserialize};
 //use core::num::flt2dec::strategy::grisu::max_pow10_no_more_than;
-use hdwallet::XPrv;
+use hdwallet::{XPrv, XPRV_SIZE};
 use std::collections::HashMap;
 use hdpayload::HDAddressPayload;
+use bip::bip39::Entropy::Entropy24;
+use bip::bip39::Entropy;
 
 fn slice_to_seed(bytes: &[u8]) -> [u8; hdwallet::SEED_SIZE] {
     let mut array = [0; hdwallet::SEED_SIZE];
@@ -55,22 +59,27 @@ fn slice_to_pub(bytes: &[u8]) -> [u8; hdwallet::XPUB_SIZE] {
 // the name doesn't conform to conventions.
 #[allow(non_snake_case)]
 pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePrivKey(env: JNIEnv,
-                                                      // this is the class that owns our
-                                                      // static method. Not going to be
-                                                      // used, but still needs to have
-                                                      // an argument slot
-                                                      _class: JClass,
-                                                      input: jbyteArray)
-                                                      -> jstring {
+                                                                               // this is the class that owns our
+                                                                               // static method. Not going to be
+                                                                               // used, but still needs to have
+                                                                               // an argument slot
+                                                                               _class: JClass,
+                                                                               entropy: jbyteArray,
+                                                                               passwd: jbyteArray)
+                                                                               -> jstring {
     // First, we have to get the string out of java. Check out the `strings`
     // module for more info on how this works.
-    let inputBytes = env.convert_byte_array(input).unwrap();
-    if inputBytes.len() != hdwallet::SEED_SIZE {
-        return env.new_string(format!("Error: length of seed must be {}", hdwallet::SEED_SIZE)).unwrap().into_inner();
+    let entro_vec = env.convert_byte_array(entropy).unwrap();
+    if entro_vec.len() != 32 {
+        return env.new_string(format!("Error: length of entropy must be {}", 32)).unwrap().into_inner();
     }
+    let mut entro_arr = [0u8; 32];
+    entro_arr.copy_from_slice(entro_vec.as_slice());
 
-    let seed = hdwallet::Seed::from_bytes(slice_to_seed(inputBytes.as_slice()));
-    let sk = hdwallet::XPrv::generate_from_seed(&seed);
+    let pass = env.convert_byte_array(entropy).unwrap();
+    let mut seed = [0u8; XPRV_SIZE];
+    keygen::generate_seed(&Entropy24(entro_arr), &pass, &mut seed);
+    let sk = XPrv::normalize_bytes(seed);
 
     let output = env.new_string(format!("{}", sk)).unwrap();
     output.into_inner()
@@ -79,9 +88,9 @@ pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePrivKey(e
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePubKey(env: JNIEnv,
-                                                     _class: JClass,
-                                                     input: jbyteArray)
-                                                     -> jstring {
+                                                                              _class: JClass,
+                                                                              input: jbyteArray)
+                                                                              -> jstring {
     let inputBytes = env.convert_byte_array(input).unwrap();
     if inputBytes.len() != hdwallet::XPRV_SIZE {
         return env.new_string(format!("Error: length of private key must be {}", hdwallet::XPRV_SIZE)).unwrap().into_inner();
@@ -95,9 +104,9 @@ pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePubKey(en
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GenerateAddr(env: JNIEnv,
-                                                   _class: JClass,
-                                                   input: jbyteArray)
-                                                   -> jstring {
+                                                                            _class: JClass,
+                                                                            input: jbyteArray)
+                                                                            -> jstring {
     let inputBytes = env.convert_byte_array(input).unwrap();
     if inputBytes.len() != hdwallet::XPUB_SIZE {
         env.new_string(format!("Error: length of private key must be {}", hdwallet::XPRV_SIZE)).unwrap().into_inner();
@@ -113,10 +122,10 @@ pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GenerateAddr(env:
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GenRawTx(env: JNIEnv,
-                                               _class: JClass,
-                                               inputs: JString,
-                                               outputs: JString)
-                                               -> jstring {
+                                                                        _class: JClass,
+                                                                        inputs: JString,
+                                                                        outputs: JString)
+                                                                        -> jstring {
     let inputStr: String = env.get_string(inputs).expect("Error: Couldn't get java string!").into();
     let outStr: String = env.get_string(outputs).expect("Error: Couldn't get java string!").into();
 
@@ -147,10 +156,10 @@ pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GenRawTx(env: JNI
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_SignRawTx(env: JNIEnv,
-                                                _class: JClass,
-                                                rawTx: jbyteArray,
-                                                priKeys: JString)
-                                                -> jstring {
+                                                                         _class: JClass,
+                                                                         rawTx: jbyteArray,
+                                                                         priKeys: JString)
+                                                                         -> jstring {
     // First, we have to get the byte[] out of java.
     let input = env.convert_byte_array(rawTx).unwrap();
     // deserialize byte to raw tx
