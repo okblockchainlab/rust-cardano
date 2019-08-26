@@ -76,7 +76,7 @@ pub extern "system" fn Java_com_okcoin_vault_jni_ada_AdaNative_GeneratePrivKey(e
     let mut entro_arr = [0u8; 32];
     entro_arr.copy_from_slice(entro_vec.as_slice());
 
-    let pass = env.convert_byte_array(entropy).unwrap();
+    let pass = env.convert_byte_array(passwd).unwrap();
     let mut seed = [0u8; XPRV_SIZE];
     keygen::generate_seed(&Entropy24(entro_arr), &pass, &mut seed);
     let sk = XPrv::normalize_bytes(seed);
